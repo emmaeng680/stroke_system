@@ -10,7 +10,14 @@ SECRET_KEY = 'django-insecure-your-secret-key-here'
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['localhost', '.vercel.app', '.now.sh', '127.0.0.1', 'stroke-system-4.onrender.com']
+ALLOWED_HOSTS = ['localhost', '.vercel.app', '.now.sh', '127.0.0.1', 'stroke-system-5.onrender.com']
+
+CSRF_TRUSTED_ORIGINS = [
+    'https://stroke-system-5.onrender.com',
+    'http://stroke-system-5.onrender.com',  # Include both HTTP and HTTPS
+    'http://localhost:8000',
+    'http://127.0.0.1:8000'
+]
 
 # Application definition
 INSTALLED_APPS = [
