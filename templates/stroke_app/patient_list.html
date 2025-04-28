@@ -1,0 +1,65 @@
+{% extends 'base.html' %}
+
+{% block title %}Patients - Mobile Stroke Unit System{% endblock %}
+
+{% block page_title %}Patient List{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-md-8">
+        <form method="get" class="form-inline">
+            <div class="input-group">
+                <input type="text" name="search" class="form-control" placeholder="Search by name..." value="{{ request.GET.search }}">
+                <button class="btn btn-outline-primary" type="submit">Search</button>
+            </div>
+        </form>
+    </div>
+    <div class="col-md-4 text-end">
+        {% if user.is_technician %}
+        <a href="{% url 'patient_create' %}" class="btn btn-primary">
+            <i class="bi bi-plus-circle"></i> Register New Patient
+        </a>
+        {% endif %}
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        {% if patients %}
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Age</th>
+                        <th>Sex</th>
+                        <th>Medical History</th>
+                        <th>Registered</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for patient in patients %}
+                    <tr>
+                        <td>{{ patient.name }}</td>
+                        <td>{{ patient.age }}</td>
+                        <td>{{ patient.get_sex_display }}</td>
+                        <td>{{ patient.medical_history|truncatechars:50 }}</td>
+                        <td>{{ patient.created_at|date:"M d, Y" }}</td>
+                        <td>
+                            <a href="{% url 'patient_detail' patient.id %}" class="btn btn-sm btn-info">View</a>
+                            {% if user.is_technician %}
+                            <a href="{% url 'case_create' patient.id %}" class="btn btn-sm btn-primary">Create Case</a>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <p class="text-center">No patients found. {% if user.is_technician %}<a href="{% url 'patient_create' %}">Register a new patient</a>{% endif %}.</p>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

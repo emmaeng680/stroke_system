@@ -1,0 +1,36 @@
+{% extends 'base.html' %}
+{% load crispy_forms_tags %}
+
+{% block title %}{{ title }} - Mobile Stroke Unit System{% endblock %}
+
+{% block page_title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-md-12">
+        <div class="alert alert-info">
+            <h4 class="alert-heading">Creating new case for: {{ patient.name }}</h4>
+            <p><strong>Age:</strong> {{ patient.age }} &nbsp; | &nbsp; <strong>Sex:</strong> {{ patient.get_sex_display }}</p>
+            <p><strong>Medical History:</strong> {{ patient.medical_history|truncatechars:100 }}</p>
+        </div>
+    </div>
+</div>
+
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-body">
+                <form method="post">
+                    {% csrf_token %}
+                    {{ form|crispy }}
+                    <p class="text-muted">Note: Ensure symptom onset time is as accurate as possible. This is critical for tPA eligibility assessment.</p>
+                    <div class="d-grid gap-2 d-md-flex justify-content-md-end mt-4">
+                        <a href="{% url 'patient_detail' patient.id %}" class="btn btn-secondary me-md-2">Cancel</a>
+                        <button type="submit" class="btn btn-primary">Create Case</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

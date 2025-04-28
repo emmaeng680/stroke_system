@@ -1,0 +1,16 @@
+/* Placeholder for Bootstrap Icons */
+.bi-check-circle-fill:before {
+    content: "✓";
+  }
+  .bi-x-circle-fill:before {
+    content: "✗";
+  }
+  .bi-dash-circle:before {
+    content: "−";
+  }
+  .bi-exclamation-triangle-fill:before {
+    content: "⚠";
+  }
+  .bi-plus-circle:before {
+    content: "+";
+  }

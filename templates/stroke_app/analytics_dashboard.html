@@ -1,0 +1,98 @@
+{% extends 'base.html' %}
+
+{% block title %}Analytics Dashboard - Mobile Stroke Unit System{% endblock %}
+
+{% block page_title %}Analytics Dashboard{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-md-12">
+        <div class="alert alert-info">
+            <h5>Data shown is from the past 30 days</h5>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <!-- KPI Cards -->
+    <div class="col-md-3">
+        <div class="card text-white bg-primary mb-3">
+            <div class="card-header">Total Cases</div>
+            <div class="card-body">
+                <h1 class="card-title">{{ total_cases }}</h1>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-white bg-success mb-3">
+            <div class="card-header">tPA Recommended</div>
+            <div class="card-body">
+                <h1 class="card-title">{{ tpa_recommended }}</h1>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-white bg-danger mb-3">
+            <div class="card-header">tPA Not Recommended</div>
+            <div class="card-body">
+                <h1 class="card-title">{{ tpa_not_recommended }}</h1>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-white bg-info mb-3">
+            <div class="card-header">Avg. Time to Treatment</div>
+            <div class="card-body">
+                <h1 class="card-title">{{ avg_onset_to_treatment }} hrs</h1>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <!-- Charts -->
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header">
+                Treatment Decision Analysis
+            </div>
+            <div class="card-body">
+                {% if chart %}
+                <img src="data:image/png;base64,{{ chart }}" alt="Analytics Charts" class="img-fluid">
+                {% else %}
+                <div class="alert alert-warning">No data available for visualization</div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-4">
+    <!-- Outcome Analysis -->
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header">
+                Key Performance Insights
+            </div>
+            <div class="card-body">
+                <div class="alert {% if avg_onset_to_treatment <= 3.5 %}alert-success{% elif avg_onset_to_treatment <= 4.5 %}alert-warning{% else %}alert-danger{% endif %}">
+                    <h5>Treatment Time Window Analysis</h5>
+                    <p>Average symptom onset to treatment time is <strong>{{ avg_onset_to_treatment }} hours</strong>.</p>
+                    {% if avg_onset_to_treatment <= 3.5 %}
+                    <p><i class="bi bi-check-circle-fill"></i> Well within the 4.5-hour treatment window for tPA.</p>
+                    {% elif avg_onset_to_treatment <= 4.5 %}
+                    <p><i class="bi bi-exclamation-triangle-fill"></i> Close to the 4.5-hour treatment window limit for tPA.</p>
+                    {% else %}
+                    <p><i class="bi bi-x-circle-fill"></i> Exceeds the 4.5-hour treatment window for tPA. Process improvement needed.</p>
+                    {% endif %}
+                </div>
+                
+                <div class="alert alert-info">
+                    <h5>Treatment Decision Analysis</h5>
+                    <p>Out of {{ total_cases }} cases, tPA was recommended in {{ tpa_recommended }} cases ({% if total_cases > 0 %}{{ tpa_recommended|floatformat:1|default:0 }}%{% else %}0%{% endif %}).</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

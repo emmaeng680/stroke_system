@@ -1,0 +1,254 @@
+{% extends 'base.html' %}
+
+{% block title %}Dashboard - Mobile Stroke Unit System{% endblock %}
+
+{% block page_title %}
+Dashboard - {{ current_time|date:"F j, Y, g:i a" }}
+{% endblock %}
+
+{% block content %}
+
+<div class="row">
+    <!-- Main Dashboard Content -->
+    <div class="col-md-8">
+        {% if user.is_technician %}
+            <!-- Technician Dashboard -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    Active Cases
+                </div>
+                <div class="card-body">
+                    {% if active_cases %}
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Case #</th>
+                                        <th>Patient</th>
+                                        <th>Chief Complaint</th>
+                                        <th>Created</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for case in active_cases %}
+                                    <tr>
+                                        <td>{{ case.id }}</td>
+                                        <td>{{ case.patient.name }}</td>
+                                        <td>{{ case.chief_complaint|truncatechars:50 }}</td>
+                                        <td>{{ case.created_at|date:"M d, Y H:i" }}</td>
+                                        <td>
+                                            <a href="{% url 'case_detail' case.id %}" class="btn btn-sm btn-primary">View</a>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <p>No active cases at the moment.</p>
+                    {% endif %}
+                    <div class="mt-3">
+                        <a href="{% url 'patient_list' %}" class="btn btn-primary">Find Patient to Create Case</a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Recent Cases -->
+            <div class="card">
+                <div class="card-header">
+                    Recent Cases
+                </div>
+                <div class="card-body">
+                    {% if recent_cases %}
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Case #</th>
+                                        <th>Patient</th>
+                                        <th>Status</th>
+                                        <th>Created</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for case in recent_cases %}
+                                    <tr>
+                                        <td>{{ case.id }}</td>
+                                        <td>{{ case.patient.name }}</td>
+                                        <td>
+                                            {% if case.status == 'active' %}
+                                                <span class="badge bg-primary">Active</span>
+                                            {% elif case.status == 'completed' %}
+                                                <span class="badge bg-success">Completed</span>
+                                            {% else %}
+                                                <span class="badge bg-secondary">{{ case.get_status_display }}</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>{{ case.created_at|date:"M d, Y H:i" }}</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <p>No recent cases.</p>
+                    {% endif %}
+                </div>
+            </div>
+        {% elif user.is_neurologist %}
+            <!-- Neurologist Dashboard -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    Pending Consultations
+                </div>
+                <div class="card-body">
+                    {% if pending_consultations %}
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Case #</th>
+                                        <th>Patient</th>
+                                        <th>Chief Complaint</th>
+                                        <th>Technician</th>
+                                        <th>Created</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for case in pending_consultations %}
+                                    <tr>
+                                        <td>{{ case.id }}</td>
+                                        <td>{{ case.patient.name }}</td>
+                                        <td>{{ case.chief_complaint|truncatechars:50 }}</td>
+                                        <td>{{ case.technician.get_full_name|default:case.technician.username }}</td>
+                                        <td>{{ case.created_at|date:"M d, Y H:i" }}</td>
+                                        <td>
+                                            <a href="{% url 'case_detail' case.id %}" class="btn btn-sm btn-primary">Review</a>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <p>No pending consultations at the moment.</p>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Recent Consultations -->
+            <div class="card">
+                <div class="card-header">
+                    Recent Consultations
+                </div>
+                <div class="card-body">
+                    {% if recent_consultations %}
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Case #</th>
+                                        <th>Patient</th>
+                                        <th>Diagnosis</th>
+                                        <th>tPA</th>
+                                        <th>Date</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for consultation in recent_consultations %}
+                                    <tr>
+                                        <td>{{ consultation.case.id }}</td>
+                                        <td>{{ consultation.case.patient.name }}</td>
+                                        <td>{{ consultation.diagnosis|truncatechars:50 }}</td>
+                                        <td>
+                                            {% if consultation.tpa_recommended %}
+                                                <span class="badge bg-success">Recommended</span>
+                                            {% else %}
+                                                <span class="badge bg-danger">Not Recommended</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>{{ consultation.timestamp|date:"M d, Y H:i" }}</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <p>No recent consultations.</p>
+                    {% endif %}
+                </div>
+            </div>
+        {% endif %}
+    </div>
+    
+    <!-- Sidebar -->
+    <div class="col-md-4">
+        <!-- Quick Links -->
+        <div class="card mb-4">
+            <div class="card-header">
+                Quick Links
+            </div>
+            <div class="card-body">
+                <ul class="list-group list-group-flush">
+                    <li class="list-group-item">
+                        <a href="{% url 'patient_list' %}">View All Patients</a>
+                    </li>
+                    {% if user.is_technician %}
+                    <li class="list-group-item">
+                        <a href="{% url 'patient_create' %}">Register New Patient</a>
+                    </li>
+                    {% endif %}
+                </ul>
+            </div>
+        </div>
+        
+        <!-- Alerts -->
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span>Alerts</span>
+                {% if unread_alerts %}
+                <span class="badge bg-danger">{{ unread_alerts|length }}</span>
+                {% endif %}
+            </div>
+            <div class="card-body alert-box">
+                {% if unread_alerts %}
+                    <ul class="list-group">
+                        {% for alert in unread_alerts %}
+                        <li class="list-group-item {{ alert.severity }}-alert">
+                            <h6>{{ alert.title }}</h6>
+                            <p>{{ alert.message }}</p>
+                            <small class="text-muted">{{ alert.created_at|date:"M d, Y H:i" }}</small>
+                            <div class="mt-1">
+                                <a href="{% url 'mark_alert_read' alert.id %}" class="btn btn-sm btn-outline-secondary">Mark as Read</a>
+                                <a href="{% url 'case_detail' alert.case.id %}" class="btn btn-sm btn-outline-primary">View Case</a>
+                            </div>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                {% else %}
+                    <p>No unread alerts.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+<!-- Add this section for charts before the existing content -->
+<div class="row mb-4">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Case Analytics Overview</h5>
+            </div>
+            <div class="card-body">
+                {% if dashboard_chart %}
+                    <img src="data:image/png;base64,{{ dashboard_chart }}" class="img-fluid" alt="Dashboard Charts">
+                {% else %}
+                    <div class="alert alert-info">No data available for charts.</div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,90 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ patient.name }} - Patient Details{% endblock %}
+
+{% block page_title %}Patient: {{ patient.name }}{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header">
+                <div class="d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">Patient Information</h5>
+                    {% if user.is_technician %}
+                    <a href="{% url 'case_create' patient.id %}" class="btn btn-primary">Create New Case</a>
+                    {% endif %}
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <p><strong>Name:</strong> {{ patient.name }}</p>
+                        <p><strong>Age:</strong> {{ patient.age }}</p>
+                        <p><strong>Sex:</strong> {{ patient.get_sex_display }}</p>
+                        <p><strong>Registered:</strong> {{ patient.created_at|date:"F j, Y" }}</p>
+                    </div>
+                    <div class="col-md-6">
+                        <p><strong>Medical History:</strong></p>
+                        <div class="border p-2 bg-light">{{ patient.medical_history|linebreaks|default:"No medical history recorded." }}</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Case History</h5>
+            </div>
+            <div class="card-body">
+                {% if cases %}
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Case #</th>
+                                <th>Chief Complaint</th>
+                                <th>Status</th>
+                                <th>Created</th>
+                                <th>Technician</th>
+                                <th>Neurologist</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for case in cases %}
+                            <tr>
+                                <td>{{ case.id }}</td>
+                                <td>{{ case.chief_complaint|truncatechars:30 }}</td>
+                                <td>
+                                    {% if case.status == 'active' %}
+                                    <span class="badge bg-primary">Active</span>
+                                    {% elif case.status == 'completed' %}
+                                    <span class="badge bg-success">Completed</span>
+                                    {% elif case.status == 'referred' %}
+                                    <span class="badge bg-warning">Referred</span>
+                                    {% endif %}
+                                </td>
+                                <td>{{ case.created_at|date:"M d, Y H:i" }}</td>
+                                <td>{{ case.technician.get_full_name|default:case.technician.username }}</td>
+                                <td>{{ case.neurologist.get_full_name|default:"-" }}</td>
+                                <td>
+                                    <a href="{% url 'case_detail' case.id %}" class="btn btn-sm btn-info">View</a>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <p class="text-center">No cases found for this patient.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

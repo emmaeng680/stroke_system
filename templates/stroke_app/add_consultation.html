@@ -1,0 +1,158 @@
+{% extends 'base.html' %}
+{% load crispy_forms_tags %}
+
+{% block title %}Provide Consultation - Case #{{ case.id }}{% endblock %}
+
+{% block page_title %}Provide Consultation - Case #{{ case.id }}{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-md-12">
+        <div class="alert alert-info">
+            <h5>Patient: {{ case.patient.name }}</h5>
+            <p><strong>Age/Sex:</strong> {{ case.patient.age }} / {{ case.patient.get_sex_display }}</p>
+            <p><strong>Chief Complaint:</strong> {{ case.chief_complaint }}</p>
+            <p><strong>Medical History:</strong> {{ case.patient.medical_history|truncatechars:100 }}</p>
+            <p>
+                <strong>Symptom Onset:</strong> {{ case.symptom_onset_time|date:"F j, Y, g:i a" }}
+                {% if within_treatment_window %}
+                <span class="badge bg-success">Within tPA Window</span>
+                {% else %}
+                <span class="badge bg-danger">Outside tPA Window ({{ hours_since_onset }} hours)</span>
+                {% endif %}
+            </p>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-7">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Provide Consultation</h5>
+            </div>
+            <div class="card-body">
+                <form method="post">
+                    {% csrf_token %}
+                    {{ form|crispy }}
+                    
+                    <div class="alert alert-warning mt-3">
+                        <i class="bi bi-exclamation-triangle-fill"></i>
+                        <strong>Important:</strong> tPA recommendation should be carefully considered based on inclusion/exclusion criteria and clinical judgment.
+                    </div>
+                    
+                    <div class="d-grid gap-2 d-md-flex justify-content-md-end mt-4">
+                        <a href="{% url 'case_detail' case.id %}" class="btn btn-secondary me-md-2">Cancel</a>
+                        <button type="submit" class="btn btn-primary">Submit Consultation</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-5">
+        <!-- Clinical Data Summary -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0">Clinical Data Summary</h5>
+            </div>
+            <div class="card-body">
+                <!-- Vital Signs -->
+                <h6>Vital Signs</h6>
+                {% if vitals %}
+                <ul class="list-unstyled">
+                    <li><strong>BP:</strong> {{ vitals.blood_pressure_systolic }}/{{ vitals.blood_pressure_diastolic }} mmHg</li>
+                    <li><strong>HR:</strong> {{ vitals.heart_rate }} bpm</li>
+                    <li><strong>RR:</strong> {{ vitals.respiratory_rate }} br/min</li>
+                    <li><strong>O2 Sat:</strong> {{ vitals.oxygen_saturation }}%</li>
+                    <li><strong>Temp:</strong> {{ vitals.temperature|default:"N/A" }} °C</li>
+                </ul>
+                {% else %}
+                <p class="fst-italic">No vital signs recorded.</p>
+                {% endif %}
+                
+                <hr>
+                
+                <!-- Lab Results -->
+                <h6>Lab Results</h6>
+                {% if lab_results %}
+                <ul class="list-unstyled">
+                    <li><strong>CBC:</strong> {{ lab_results.cbc_status }}</li>
+                    <li><strong>BMP:</strong> {{ lab_results.bmp_status }}</li>
+                    <li><strong>Glucose:</strong> {{ lab_results.glucose_level|default:"N/A" }} mg/dL</li>
+                    <li><strong>INR:</strong> {{ lab_results.inr|default:"N/A" }}</li>
+                    <li><strong>Platelets:</strong> {{ lab_results.platelet_count|default:"N/A" }} /μL</li>
+                    <li><strong>Coagulation:</strong> {{ lab_results.coagulation_status }}</li>
+                </ul>
+                {% else %}
+                <p class="fst-italic">No lab results recorded.</p>
+                {% endif %}
+                
+                <hr>
+                
+                <!-- NIHSS Score -->
+                <h6>NIHSS Score</h6>
+                {% if nihss_scores %}
+                <p class="fs-4 {% if nihss_scores.0.score >= 16 %}text-danger{% elif nihss_scores.0.score >= 5 %}text-warning{% endif %}">
+                    {{ nihss_scores.0.score }}
+                    {% if nihss_scores.0.score < 5 %}
+                        <span class="badge bg-success">Minor</span>
+                    {% elif nihss_scores.0.score < 16 %}
+                        <span class="badge bg-warning">Moderate</span>
+                    {% else %}
+                        <span class="badge bg-danger">Severe</span>
+                    {% endif %}
+                </p>
+                <p class="small">Assessed at {{ nihss_scores.0.timestamp|date:"M d, Y H:i" }}</p>
+                {% else %}
+                <p class="fst-italic">No NIHSS score recorded.</p>
+                {% endif %}
+                
+                <hr>
+                
+                <!-- Imaging Studies -->
+                <h6>Imaging Studies</h6>
+                {% if imaging %}
+                <ul>
+                    {% for study in imaging %}
+                    <li>
+                        <strong>{{ study.get_study_type_display }}:</strong> 
+                        {{ study.findings|truncatechars:100 }}
+                    </li>
+                    {% endfor %}
+                </ul>
+                {% else %}
+                <p class="fst-italic">No imaging studies recorded.</p>
+                {% endif %}
+            </div>
+        </div>
+        
+        <!-- tPA Criteria -->
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0">tPA Eligibility Criteria</h5>
+            </div>
+            <div class="card-body">
+                <h6>Inclusion Criteria</h6>
+                <ul>
+                    <li>Age ≥ 18 years</li>
+                    <li>NIHSS score ≥ 4</li>
+                    <li>INR ≤ 1.7</li>
+                    <li>Within 4.5 hours of symptom onset</li>
+                </ul>
+                
+                <h6>Exclusion Criteria</h6>
+                <ul>
+                    <li>Major head trauma or stroke in previous 3 months</li>
+                    <li>Intracranial hemorrhage</li>
+                    <li>Systolic BP > 185 mmHg or diastolic BP > 110 mmHg</li>
+                    <li>Blood glucose < 50 mg/dL or > 400 mg/dL</li>
+                    <li>Platelet count < 100,000/μL</li>
+                    <li>Current use of anticoagulant with elevated INR</li>
+                    <li>Recent major surgery</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

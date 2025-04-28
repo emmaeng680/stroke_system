@@ -1,0 +1,49 @@
+{% extends 'base.html' %}
+{% load crispy_forms_tags %}
+
+{% block title %}Record NIHSS Score - Case #{{ case.id }}{% endblock %}
+
+{% block page_title %}Record NIHSS Score - Case #{{ case.id }}{% endblock %}
+
+{% block content %}
+<div class="row mb-3">
+    <div class="col-md-12">
+        <div class="alert alert-info">
+            <h5>Patient: {{ case.patient.name }}</h5>
+            <p><strong>Age/Sex:</strong> {{ case.patient.age }} / {{ case.patient.get_sex_display }}</p>
+            <p><strong>Chief Complaint:</strong> {{ case.chief_complaint }}</p>
+        </div>
+    </div>
+</div>
+
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-body">
+                <div class="alert alert-info mb-4">
+                    <h6 class="alert-heading">NIHSS Scoring System</h6>
+                    <p class="mb-1">The National Institutes of Health Stroke Scale (NIHSS) is a standardized assessment tool for evaluating the severity of neurological deficits in stroke patients.</p>
+                    <ul class="mb-1">
+                        <li>0: No stroke symptoms</li>
+                        <li>1-4: Minor stroke</li>
+                        <li>5-15: Moderate stroke</li>
+                        <li>16-20: Moderate to severe stroke</li>
+                        <li>21-42: Severe stroke</li>
+                    </ul>
+                    <p class="mb-0">An NIHSS score of 4 or higher is typically required for tPA administration consideration.</p>
+                </div>
+                
+                <form method="post">
+                    {% csrf_token %}
+                    {{ form|crispy }}
+                    
+                    <div class="d-grid gap-2 d-md-flex justify-content-md-end mt-4">
+                        <a href="{% url 'case_detail' case.id %}" class="btn btn-secondary me-md-2">Cancel</a>
+                        <button type="submit" class="btn btn-primary">Save NIHSS Score</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

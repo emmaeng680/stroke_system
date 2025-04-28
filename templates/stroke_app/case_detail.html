@@ -1,0 +1,611 @@
+{% extends 'base.html' %}
+{% load crispy_forms_tags %}
+
+{% block title %}Case #{{ case.id }} - {{ case.patient.name }}{% endblock %}
+
+{% block page_title %}
+Case #{{ case.id }} - {{ case.patient.name }}
+{% if case.status == 'active' %}
+<span class="badge bg-primary">Active</span>
+{% elif case.status == 'completed' %}
+<span class="badge bg-success">Completed</span>
+{% elif case.status == 'referred' %}
+<span class="badge bg-warning">Referred</span>
+{% endif %}
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <!-- Patient Info & Summary -->
+    <div class="col-md-12">
+        <div class="card mb-4">
+            <div class="card-header">
+                <div class="d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">Case Summary</h5>
+                    {% if within_treatment_window %}
+                    <span class="badge bg-success">Within tPA Treatment Window ({{ hours_since_onset }} hours since onset)</span>
+                    {% else %}
+                    <span class="badge bg-danger">Outside tPA Treatment Window ({{ hours_since_onset }} hours since onset)</span>
+                    {% endif %}
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6>Patient Information</h6>
+                        <p><strong>Name:</strong> {{ case.patient.name }}</p>
+                        <p><strong>Age/Sex:</strong> {{ case.patient.age }} / {{ case.patient.get_sex_display }}</p>
+                        <p><strong>Medical History:</strong> {{ case.patient.medical_history|truncatechars:100 }}</p>
+                    </div>
+                    <div class="col-md-6">
+                        <h6>Case Information</h6>
+                        <p><strong>Chief Complaint:</strong> {{ case.chief_complaint }}</p>
+                        <p><strong>Symptom Onset Time:</strong> {{ case.symptom_onset_time|date:"F j, Y, g:i a" }}</p>
+                        <p><strong>Created by:</strong> {{ case.technician.get_full_name }}</p>
+                        <p><strong>Neurologist:</strong> {{ case.neurologist.get_full_name|default:"Not assigned" }}</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <!-- Clinical Data -->
+    <div class="col-md-8">
+        <div class="card mb-4">
+            <div class="card-header">
+                <ul class="nav nav-tabs card-header-tabs" id="clinicalData" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active" id="vitals-tab" data-bs-toggle="tab" data-bs-target="#vitals" type="button" role="tab" aria-controls="vitals" aria-selected="true">Vitals</button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="labs-tab" data-bs-toggle="tab" data-bs-target="#labs" type="button" role="tab" aria-controls="labs" aria-selected="false">Labs</button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="imaging-tab" data-bs-toggle="tab" data-bs-target="#imaging" type="button" role="tab" aria-controls="imaging" aria-selected="false">Imaging</button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="nihss-tab" data-bs-toggle="tab" data-bs-target="#nihss" type="button" role="tab" aria-controls="nihss" aria-selected="false">NIHSS</button>
+                    </li>
+                </ul>
+            </div>
+            <div class="card-body">
+                <div class="tab-content" id="clinicalDataContent">
+                    <!-- Vitals Tab -->
+                    <div class="tab-pane fade show active" id="vitals" role="tabpanel" aria-labelledby="vitals-tab">
+                        {% if vitals %}
+                            <div class="row mb-3">
+                                <div class="col-md-6">
+                                    <h6>Blood Pressure</h6>
+                                    <p class="display-6 {% if vitals.is_blood_pressure_high %}text-danger{% endif %}">
+                                        {{ vitals.blood_pressure_systolic }}/{{ vitals.blood_pressure_diastolic }} <small class="text-muted">mmHg</small>
+                                    </p>
+                                    {% if vitals.is_blood_pressure_high %}
+                                    <div class="alert alert-danger">
+                                        <small>BP exceeds tPA threshold (>185/110)</small>
+                                    </div>
+                                    {% endif %}
+                                </div>
+                                <div class="col-md-3">
+                                    <h6>Heart Rate</h6>
+                                    <p class="display-6 {% if vitals.heart_rate > 100 or vitals.heart_rate < 60 %}text-warning{% endif %}">
+                                        {{ vitals.heart_rate }} <small class="text-muted">bpm</small>
+                                    </p>
+                                </div>
+                                <div class="col-md-3">
+                                    <h6>Resp. Rate</h6>
+                                    <p class="display-6 {% if vitals.respiratory_rate > 20 or vitals.respiratory_rate < 12 %}text-warning{% endif %}">
+                                        {{ vitals.respiratory_rate }} <small class="text-muted">br/min</small>
+                                    </p>
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <h6>Oxygen Saturation</h6>
+                                    <p class="display-6 {% if vitals.oxygen_saturation < 95 %}text-warning{% endif %}">
+                                        {{ vitals.oxygen_saturation }} <small class="text-muted">%</small>
+                                    </p>
+                                </div>
+                                <div class="col-md-6">
+                                    <h6>Temperature</h6>
+                                    <p class="display-6 {% if vitals.temperature > 38 or vitals.temperature < 36.1 %}text-warning{% endif %}">
+                                        {{ vitals.temperature|default:"--" }} <small class="text-muted">°C</small>
+                                    </p>
+                                </div>
+                            </div>
+                            <div class="text-muted mt-3">
+                                <small>Recorded at: {{ vitals.timestamp|date:"F j, Y, g:i a" }}</small>
+                            </div>
+                        {% else %}
+                            <div class="text-center py-4">
+                                <p>No vital signs recorded yet.</p>
+                                {% if user.is_technician %}
+                                <a href="{% url 'add_vitals' case.id %}" class="btn btn-primary">Record Vitals</a>
+                                {% endif %}
+                            </div>
+                        {% endif %}
+                        
+                        {% if user.is_technician and vitals %}
+                        <div class="text-end mt-3">
+                            <a href="{% url 'add_vitals' case.id %}" class="btn btn-outline-primary">Update Vitals</a>
+                        </div>
+                        {% endif %}
+                    </div>
+                    
+                    <!-- Labs Tab -->
+                    <div class="tab-pane fade" id="labs" role="tabpanel" aria-labelledby="labs-tab">
+                        {% if lab_results %}
+                            <div class="row mb-4">
+                                <div class="col-md-6">
+                                    <div class="card">
+                                        <div class="card-header bg-light">
+                                            <h6 class="mb-0">CBC Status</h6>
+                                        </div>
+                                        <div class="card-body">
+                                            <p class="{% if lab_results.cbc_status != 'normal' %}text-warning{% endif %}">
+                                                {{ lab_results.cbc_status }}
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="card">
+                                        <div class="card-header bg-light">
+                                            <h6 class="mb-0">BMP Status</h6>
+                                        </div>
+                                        <div class="card-body">
+                                            <p class="{% if lab_results.bmp_status != 'normal' %}text-warning{% endif %}">
+                                                {{ lab_results.bmp_status }}
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="row mb-4">
+                                <div class="col-md-4">
+                                    <div class="card">
+                                        <div class="card-header bg-light">
+                                            <h6 class="mb-0">Glucose Level</h6>
+                                        </div>
+                                        <div class="card-body">
+                                            <p class="{% if lab_results.glucose_level < 50 or lab_results.glucose_level > 400 %}text-danger{% endif %}">
+                                                {{ lab_results.glucose_level|default:"--" }} mg/dL
+                                            </p>
+                                            {% if lab_results.glucose_level < 50 or lab_results.glucose_level > 400 %}
+                                            <div class="alert alert-danger">
+                                                <small>Glucose outside tPA range (50-400 mg/dL)</small>
+                                            </div>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="card">
+                                        <div class="card-header bg-light">
+                                            <h6 class="mb-0">INR</h6>
+                                        </div>
+                                        <div class="card-body">
+                                            <p class="{% if lab_results.inr > 1.7 %}text-danger{% endif %}">
+                                                {{ lab_results.inr|default:"--" }}
+                                            </p>
+                                            {% if lab_results.inr > 1.7 %}
+                                            <div class="alert alert-danger">
+                                                <small>INR exceeds tPA threshold (>1.7)</small>
+                                            </div>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="card">
+                                        <div class="card-header bg-light">
+                                            <h6 class="mb-0">Platelet Count</h6>
+                                        </div>
+                                        <div class="card-body">
+                                            <p class="{% if lab_results.platelet_count < 100000 %}text-danger{% endif %}">
+                                                {{ lab_results.platelet_count|default:"--" }} /μL
+                                            </p>
+                                            {% if lab_results.platelet_count < 100000 %}
+                                            <div class="alert alert-danger">
+                                                <small>Platelet count below tPA threshold (<100,000/μL)</small>
+                                            </div>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-md-12">
+                                    <div class="card">
+                                        <div class="card-header bg-light">
+                                            <h6 class="mb-0">Coagulation Status</h6>
+                                        </div>
+                                        <div class="card-body">
+                                            <p class="{% if lab_results.coagulation_status != 'normal' %}text-warning{% endif %}">
+                                                {{ lab_results.coagulation_status }}
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="text-muted mt-3">
+                                <small>Recorded at: {{ lab_results.timestamp|date:"F j, Y, g:i a" }}</small>
+                            </div>
+                        {% else %}
+                            <div class="text-center py-4">
+                                <p>No lab results recorded yet.</p>
+                                {% if user.is_technician %}
+                                <a href="{% url 'add_labs' case.id %}" class="btn btn-primary">Record Lab Results</a>
+                                {% endif %}
+                            </div>
+                        {% endif %}
+                        
+                        {% if user.is_technician and lab_results %}
+                        <div class="text-end mt-3">
+                            <a href="{% url 'add_labs' case.id %}" class="btn btn-outline-primary">Update Lab Results</a>
+                        </div>
+                        {% endif %}
+                    </div>
+                    
+                    <!-- Imaging Tab -->
+                    <div class="tab-pane fade" id="imaging" role="tabpanel" aria-labelledby="imaging-tab">
+                        {% if imaging %}
+                            <div class="row">
+                                {% for study in imaging %}
+                                <div class="col-md-6 mb-4">
+                                    <div class="card">
+                                        <div class="card-header">
+                                            {{ study.get_study_type_display }} - {{ study.timestamp|date:"F j, Y, g:i a" }}
+                                        </div>
+                                        <div class="card-body">
+                                            <div class="mb-3">
+                                                {% if study.image_url %}
+                                                <img src="{{ study.image_url }}" alt="Simulated {{ study.get_study_type_display }}" class="img-fluid mb-3">
+                                                {% else %}
+                                                <div class="bg-light text-center p-5 mb-3">
+                                                    <em>Simulated {{ study.get_study_type_display }} Image</em>
+                                                </div>
+                                                {% endif %}
+                                            </div>
+                                            <h6>Findings:</h6>
+                                            <p>{{ study.findings }}</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        {% else %}
+                            <div class="text-center py-4">
+                                <p>No imaging studies recorded yet.</p>
+                                {% if user.is_technician %}
+                                <a href="{% url 'add_imaging' case.id %}" class="btn btn-primary">Add Imaging Study</a>
+                                {% endif %}
+                            </div>
+                        {% endif %}
+                        
+                        {% if user.is_technician %}
+                        <div class="text-end mt-3">
+                            <a href="{% url 'add_imaging' case.id %}" class="btn btn-outline-primary">Add New Imaging Study</a>
+                        </div>
+                        {% endif %}
+                    </div>
+                    
+                    <!-- NIHSS Tab -->
+                    <div class="tab-pane fade" id="nihss" role="tabpanel" aria-labelledby="nihss-tab">
+                        {% if nihss_scores %}
+                            <div class="mb-4">
+                                <h5>Latest NIHSS Score</h5>
+                                <div class="card mb-3">
+                                    <div class="card-body">
+                                        <div class="row">
+                                            <div class="col-md-6">
+                                                <p class="display-4 {% if nihss_scores.0.score >= 16 %}text-danger{% elif nihss_scores.0.score >= 5 %}text-warning{% endif %}">
+                                                    {{ nihss_scores.0.score }}
+                                                </p>
+                                                <p>
+                                                    {% if nihss_scores.0.score < 5 %}
+                                                        <span class="badge bg-success">Minor Stroke</span>
+                                                    {% elif nihss_scores.0.score < 16 %}
+                                                        <span class="badge bg-warning">Moderate Stroke</span>
+                                                    {% else %}
+                                                        <span class="badge bg-danger">Severe Stroke</span>
+                                                    {% endif %}
+                                                </p>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <p><strong>Assessed by:</strong> {{ nihss_scores.0.assessed_by.get_full_name }}</p>
+                                                <p><strong>Time:</strong> {{ nihss_scores.0.timestamp|date:"F j, Y, g:i a" }}</p>
+                                                {% if nihss_scores.0.score < 4 %}
+                                                <div class="alert alert-warning">
+                                                    <small>NIHSS score below tPA threshold (≥4)</small>
+                                                </div>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            {% if nihss_scores.count > 1 %}
+                            <h5>NIHSS Score History</h5>
+                            <table class="table table-sm">
+                                <thead>
+                                    <tr>
+                                        <th>Score</th>
+                                        <th>Assessment</th>
+                                        <th>Assessed By</th>
+                                        <th>Time</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for score in nihss_scores %}
+                                    {% if not forloop.first %}
+                                    <tr>
+                                        <td>{{ score.score }}</td>
+                                        <td>
+                                            {% if score.score < 5 %}
+                                                <span class="badge bg-success">Minor</span>
+                                            {% elif score.score < 16 %}
+                                                <span class="badge bg-warning">Moderate</span>
+                                            {% else %}
+                                                <span class="badge bg-danger">Severe</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>{{ score.assessed_by.get_full_name }}</td>
+                                        <td>{{ score.timestamp|date:"M d, Y H:i" }}</td>
+                                    </tr>
+                                    {% endif %}
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                            {% endif %}
+                        {% else %}
+                            <div class="text-center py-4">
+                                <p>No NIHSS scores recorded yet.</p>
+                                <a href="{% url 'add_nihss' case.id %}" class="btn btn-primary">Record NIHSS Score</a>
+                            </div>
+                        {% endif %}
+                        
+                        <div class="text-end mt-3">
+                            <a href="{% url 'add_nihss' case.id %}" class="btn btn-outline-primary">Add New NIHSS Score</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Consultations -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0">Neurologist Consultations</h5>
+            </div>
+            <div class="card-body">
+                {% if consultations %}
+                    {% for consultation in consultations %}
+                    <div class="card mb-3">
+                        <div class="card-header bg-light">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <span>Consultation by {{ consultation.neurologist.get_full_name }}</span>
+                                <span>{{ consultation.timestamp|date:"F j, Y, g:i a" }}</span>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <h6>Diagnosis:</h6>
+                            <p>{{ consultation.diagnosis }}</p>
+                            
+                            <h6>Treatment Recommendation:</h6>
+                            <p>{{ consultation.treatment_recommendation }}</p>
+                            
+                            <div class="mb-3">
+                                <span class="badge {% if consultation.tpa_recommended %}bg-success{% else %}bg-danger{% endif %} p-2">
+                                    tPA Administration: {% if consultation.tpa_recommended %}RECOMMENDED{% else %}NOT RECOMMENDED{% endif %}
+                                </span>
+                            </div>
+                            
+                            {% if consultation.notes %}
+                            <h6>Additional Notes:</h6>
+                            <p>{{ consultation.notes }}</p>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <div class="text-center py-4">
+                        <p>No consultations have been provided yet.</p>
+                        {% if user.is_neurologist %}
+                        <a href="{% url 'add_consultation' case.id %}" class="btn btn-primary">Provide Consultation</a>
+                        {% endif %}
+                    </div>
+                {% endif %}
+                
+                {% if user.is_neurologist %}
+                <div class="text-end mt-3">
+                    <a href="{% url 'add_consultation' case.id %}" class="btn btn-outline-primary">Add Consultation</a>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+    <!-- Sidebar -->
+    <div class="col-md-4">
+        <!-- tPA Eligibility Card -->
+        <div class="card mb-4">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0">tPA Eligibility Assessment</h5>
+            </div>
+            <div class="card-body">
+                {% if within_treatment_window %}
+                    <h6>Time Window</h6>
+                    <div class="progress mb-3">
+                        <div class="progress-bar bg-success" role="progressbar" 
+                             style="width: {% widthratio hours_since_onset 4.5 100 %}%" 
+                             aria-valuenow="{{ hours_since_onset|floatformat:0 }}" 
+                             aria-valuemin="0" 
+                             aria-valuemax="4.5">
+                            {{ hours_since_onset|floatformat:1 }} hrs
+                        </div>
+                    </div>
+                    <p class="text-success"><i class="bi bi-check-circle-fill"></i> Within 4.5 hour treatment window</p>
+                    
+                    <hr>
+                    
+                    <h6>Clinical Criteria</h6>
+                    <ul class="list-unstyled">
+                        {% if vitals %}
+                            {% if vitals.is_blood_pressure_high %}
+                                <li class="text-danger"><i class="bi bi-x-circle-fill"></i> BP exceeds threshold ({{ vitals.blood_pressure_systolic }}/{{ vitals.blood_pressure_diastolic }} mmHg)</li>
+                            {% else %}
+                                <li class="text-success"><i class="bi bi-check-circle-fill"></i> BP within acceptable range</li>
+                            {% endif %}
+                        {% else %}
+                            <li class="text-secondary"><i class="bi bi-dash-circle"></i> BP not recorded</li>
+                        {% endif %}
+                        
+                        {% if lab_results %}
+                            {% if lab_results.inr and lab_results.inr > 1.7 %}
+                                <li class="text-danger"><i class="bi bi-x-circle-fill"></i> INR exceeds threshold ({{ lab_results.inr }})</li>
+                            {% elif lab_results.inr %}
+                                <li class="text-success"><i class="bi bi-check-circle-fill"></i> INR within acceptable range</li>
+                            {% else %}
+                                <li class="text-secondary"><i class="bi bi-dash-circle"></i> INR not recorded</li>
+                            {% endif %}
+                            
+                            {% if lab_results.glucose_level and lab_results.glucose_level < 50 or lab_results.glucose_level > 400 %}
+                                <li class="text-danger"><i class="bi bi-x-circle-fill"></i> Glucose outside range ({{ lab_results.glucose_level }} mg/dL)</li>
+                            {% elif lab_results.glucose_level %}
+                                <li class="text-success"><i class="bi bi-check-circle-fill"></i> Glucose within acceptable range</li>
+                            {% else %}
+                                <li class="text-secondary"><i class="bi bi-dash-circle"></i> Glucose not recorded</li>
+                            {% endif %}
+                            
+                            {% if lab_results.platelet_count and lab_results.platelet_count < 100000 %}
+                                <li class="text-danger"><i class="bi bi-x-circle-fill"></i> Platelet count below threshold ({{ lab_results.platelet_count }} /μL)</li>
+                            {% elif lab_results.platelet_count %}
+                                <li class="text-success"><i class="bi bi-check-circle-fill"></i> Platelet count within acceptable range</li>
+                            {% else %}
+                                <li class="text-secondary"><i class="bi bi-dash-circle"></i> Platelet count not recorded</li>
+                            {% endif %}
+                        {% else %}
+                            <li class="text-secondary"><i class="bi bi-dash-circle"></i> Lab results not recorded</li>
+                        {% endif %}
+                        
+                        {% if nihss_scores %}
+                            {% if nihss_scores.0.score < 4 %}
+                                <li class="text-danger"><i class="bi bi-x-circle-fill"></i> NIHSS score below threshold ({{ nihss_scores.0.score }})</li>
+                            {% else %}
+                                <li class="text-success"><i class="bi bi-check-circle-fill"></i> NIHSS score meets threshold ({{ nihss_scores.0.score }})</li>
+                            {% endif %}
+                        {% else %}
+                            <li class="text-secondary"><i class="bi bi-dash-circle"></i> NIHSS score not recorded</li>
+                        {% endif %}
+                    </ul>
+                    
+                    <div class="mt-3 text-center">
+                        {% if consultations and consultations.0.tpa_recommended %}
+                            <div class="alert alert-success">
+                                <strong>tPA RECOMMENDED</strong><br>
+                                by {{ consultations.0.neurologist.get_full_name }}
+                            </div>
+                        {% elif consultations %}
+                            <div class="alert alert-danger">
+                                <strong>tPA NOT RECOMMENDED</strong><br>
+                                by {{ consultations.0.neurologist.get_full_name }}
+                            </div>
+                        {% elif user.is_neurologist %}
+                            <a href="{% url 'add_consultation' case.id %}" class="btn btn-primary">Provide tPA Recommendation</a>
+                        {% else %}
+                            <div class="alert alert-warning">
+                                <strong>Awaiting Neurologist Assessment</strong>
+                            </div>
+                        {% endif %}
+                    </div>
+                {% else %}
+                    <div class="alert alert-danger">
+                        <h6 class="alert-heading">Outside Treatment Window</h6>
+                        <p>Patient presented {{ hours_since_onset|floatformat:1 }} hours after symptom onset.</p>
+                        <p class="mb-0">tPA is typically administered within 4.5 hours of symptom onset.</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+        
+        <!-- Alerts -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <div class="d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">Case Alerts</h5>
+                    <span class="badge bg-secondary">{{ alerts.count }}</span>
+                </div>
+            </div>
+            <div class="card-body alert-box">
+                {% if alerts %}
+                    {% for alert in alerts %}
+                    <div class="alert {% if alert.severity == 'critical' %}alert-danger{% elif alert.severity == 'high' %}alert-warning{% elif alert.severity == 'medium' %}alert-info{% else %}alert-success{% endif %} {% if not alert.is_read %}border border-dark{% endif %}">
+                        <div class="d-flex justify-content-between">
+                            <h6 class="alert-heading">{{ alert.title }}</h6>
+                            <small>{{ alert.created_at|date:"H:i" }}</small>
+                        </div>
+                        <p>{{ alert.message }}</p>
+                        <div class="d-flex justify-content-between align-items-center">
+                            <small>By: {{ alert.created_by.get_full_name }}</small>
+                            {% if not alert.is_read %}
+                            <a href="{% url 'mark_alert_read' alert.id %}" class="btn btn-sm btn-outline-secondary">Mark as Read</a>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <p class="text-center">No alerts for this case.</p>
+                {% endif %}
+            </div>
+        </div>
+        
+        <!-- Action Buttons -->
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Actions</h5>
+            </div>
+            <div class="card-body">
+                {% if user.is_technician %}
+                <div class="d-grid gap-2">
+                    <a href="{% url 'add_vitals' case.id %}" class="btn btn-outline-primary mb-2">Record Vitals</a>
+                    <a href="{% url 'add_labs' case.id %}" class="btn btn-outline-primary mb-2">Record Lab Results</a>
+                    <a href="{% url 'add_imaging' case.id %}" class="btn btn-outline-primary mb-2">Add Imaging Study</a>
+                    <a href="{% url 'add_nihss' case.id %}" class="btn btn-outline-primary">Record NIHSS Score</a>
+                </div>
+                {% endif %}
+                
+                {% if user.is_neurologist %}
+                <div class="d-grid gap-2">
+                    <a href="{% url 'add_consultation' case.id %}" class="btn btn-primary mb-2">Provide Consultation</a>
+                    <a href="{% url 'add_nihss' case.id %}" class="btn btn-outline-primary">Record NIHSS Score</a>
+                </div>
+                {% endif %}
+                
+                <hr>
+                <div class="d-grid">
+                    <a href="{% url 'patient_detail' case.patient.id %}" class="btn btn-secondary">Back to Patient Record</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Bootstrap tab functionality
+    document.addEventListener('DOMContentLoaded', function() {
+        var triggerTabList = [].slice.call(document.querySelectorAll('#clinicalData button'));
+        triggerTabList.forEach(function(triggerEl) {
+            var tabTrigger = new bootstrap.Tab(triggerEl);
+            triggerEl.addEventListener('click', function(event) {
+                event.preventDefault();
+                tabTrigger.show();
+            });
+        });
+    });
+</script>
+{% endblock %}
