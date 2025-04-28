@@ -66,12 +66,12 @@ TEMPLATES = [
 WSGI_APPLICATION = 'stroke_system.wsgi.application'
 
 #Default database configuration
-# DATABASES = {
-#     'default': {
-#         'ENGINE': 'django.db.backends.sqlite3',
-#         'NAME': BASE_DIR / 'db.sqlite3',
-#     }
-# }
+DATABASES = {
+    'default': {
+        'ENGINE': 'django.db.backends.sqlite3',
+        'NAME': BASE_DIR / 'db.sqlite3',
+    }
+}
 
 # DATABASES = {
 #     'default': {
@@ -86,16 +86,16 @@ WSGI_APPLICATION = 'stroke_system.wsgi.application'
 
 
 # Database configuration for local development
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'stroke_db',
-        'USER': 'oppongea',  # Use your system username or the user you created
-        'PASSWORD': 'Chukufg33@@C',
-        'HOST': 'localhost',
-        'PORT': '5432',
-    }
-}
+# DATABASES = {
+#     'default': {
+#         'ENGINE': 'django.db.backends.postgresql',
+#         'NAME': 'stroke_db',
+#         'USER': 'oppongea',  # Use your system username or the user you created
+#         'PASSWORD': 'Chukufg33@@C',
+#         'HOST': 'localhost',
+#         'PORT': '5432',
+#     }
+# }
 
 # Password validation
 AUTH_PASSWORD_VALIDATORS = [
